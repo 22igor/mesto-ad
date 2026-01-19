@@ -1,0 +1,15 @@
+{
+  "name": "mesto-project",
+  "version": "1.0.0",
+  "description": "Проект Mesto с валидацией форм",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^7.2.7"
+  },
+  "type": "module"
+}
