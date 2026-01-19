@@ -26,9 +26,9 @@
             style="background-image: url('./src/images/avatar.jpg')"
           ></div>
           <div class="profile__info">
-            <h1 class="profile__title">Жак-Ив Кусто</h1>
+            <h1 class="profile__title"></h1>
             <button class="profile__edit-button" type="button"></button>
-            <p class="profile__description">Исследователь океана</p>
+            <p class="profile__description"></p>
           </div>
           <button class="profile__add-button" type="button"></button>
         </section>
@@ -161,6 +161,22 @@
         </div>
       </div>
 
+      <!-- Модальное окно подтверждения удаления карточки -->
+      <div class="popup popup_type_remove-card">
+        <div class="popup__content">
+          <button type="button" class="popup__close"></button>
+          <h3 class="popup__title">Вы уверены?</h3>
+          <form class="popup__form" name="remove-card">
+            <button
+              type="submit"
+              class="button popup__button"
+            >
+              Да
+            </button>
+          </form>
+        </div>
+      </div>
+
     </div>
 
     <script src="./src/scripts/index.js" defer type="module"></script>
@@ -175,9 +191,30 @@
           <h2 class="card__title"></h2>
           <div class="card__likes">
             <button type="button" class="card__like-button"></button>
+            <span class="card__like-count">0</span>
           </div>
         </div>
       </li>
+    </template>
+    
+    <template id="popup-info-definition-template">
+      <div class="popup-info__definition">
+        <p class="popup-info__term"></p>
+        <p class="popup-info__definition-text"></p>
+      </div>
+    </template>
+
+    <template id="popup-info-user-preview-template">
+      <div class="popup-info__user-preview">
+        <div
+          class="popup-info__user-preview-avatar"
+          style="background-image: url('')"
+        ></div>
+        <div class="popup-info__user-preview-info">
+          <p class="popup-info__user-preview-name"></p>
+          <p class="popup-info__user-preview-about"></p>
+        </div>
+      </div>
     </template>
 
   </body>
