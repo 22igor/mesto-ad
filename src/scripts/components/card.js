@@ -7,11 +7,12 @@ const getTemplate = () => {
 
 export const createCardElement = (
   cardData,
-  { onPreviewPicture, onLikeIcon, onDeleteCard, currentUserId }
+  { onPreviewPicture, onLikeIcon, onDeleteCard, onInfoClick, currentUserId }
 ) => {
   const cardElement = getTemplate();
   const likeButton = cardElement.querySelector(".card__like-button");
   const deleteButton = cardElement.querySelector(".card__control-button_type_delete");
+  const infoButton = cardElement.querySelector(".card__control-button_type_info");
   const cardImage = cardElement.querySelector(".card__image");
   const cardTitle = cardElement.querySelector(".card__title");
   const likeCountElement = cardElement.querySelector(".card__like-count");
@@ -32,6 +33,12 @@ export const createCardElement = (
   const isOwnCard = cardData.owner && cardData.owner._id === currentUserId;
   if (!isOwnCard && deleteButton) {
     deleteButton.style.display = 'none';
+  }
+
+  if (onInfoClick && infoButton) {
+    infoButton.addEventListener("click", () => {
+      onInfoClick(cardData._id);
+    });
   }
 
   if (onLikeIcon) {
@@ -56,19 +63,4 @@ export const createCardElement = (
   }
 
   return cardElement;
-};
-
-export const updateCardLike = (likeButton, likeCountElement, likesArray, currentUserId) => {
-  const isLiked = likesArray.some(user => user._id === currentUserId);
-  likeButton.classList.toggle("card__like-button_is-active", isLiked);
-  
-  if (likeCountElement) {
-    likeCountElement.textContent = likesArray.length;
-  }
-  
-  return isLiked;
-};
-
-export const isCardOwner = (cardData, currentUserId) => {
-  return cardData.owner && cardData.owner._id === currentUserId;
 };

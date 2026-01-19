@@ -1,15 +1,7 @@
-/*
-  Файл index.js является точкой входа в наше приложение
-  и только он должен содержать логику инициализации нашего приложения
-  используя при этом импорты из других файлов
-
-  Из index.js не допускается что то экспортировать
-*/
-
 import * as api from "./components/api.js";
 import { createCardElement } from "./components/card.js";
 import { openModalWindow, closeModalWindow, setCloseModalWindowEventListeners } from "./components/modal.js";
-import { enableValidation, clearValidation } from "./components/validation.js"; // импорт модуля валидации
+import { enableValidation, clearValidation } from "./components/validation.js";
 
 // DOM узлы
 const placesWrap = document.querySelector(".places__list");
@@ -38,6 +30,11 @@ const avatarFormModalWindow = document.querySelector(".popup_type_edit-avatar");
 const avatarForm = avatarFormModalWindow.querySelector(".popup__form");
 const avatarInput = avatarForm.querySelector(".popup__input");
 
+const cardInfoModalWindow = document.querySelector('.popup_type_info');
+const cardInfoModalImage = cardInfoModalWindow.querySelector('.popup-info__image');
+const cardInfoModalInfoList = cardInfoModalWindow.querySelector('.popup-info__list');
+const cardInfoModalUsersList = cardInfoModalWindow.querySelector('.popup-info__users-list');
+
 let currentUserId = null;
 
 const updateButtonText = (button, isLoading, defaultText, loadingText) => {
@@ -50,6 +47,100 @@ const handlePreviewPicture = ({ name, link }) => {
   imageElement.alt = name;
   imageCaption.textContent = name;
   openModalWindow(imageModalWindow);
+};
+
+const formatDate = (date) => {
+  return date.toLocaleDateString("ru-RU", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+};
+
+const createInfoString = (term, definition) => {
+  const infoTemplate = document.querySelector('#popup-info-definition-template').content;
+  const infoElement = infoTemplate.querySelector('.popup-info__definition').cloneNode(true);
+  
+  infoElement.querySelector('.popup-info__term').textContent = term;
+  infoElement.querySelector('.popup-info__definition-text').textContent = definition;
+  
+  return infoElement;
+};
+
+const createUserPreview = (user) => {
+  const userTemplate = document.querySelector('#popup-info-user-preview-template').content;
+  const userElement = userTemplate.querySelector('.popup-info__user-preview').cloneNode(true);
+  
+  const avatarElement = userElement.querySelector('.popup-info__user-preview-avatar');
+  if (user.avatar) {
+    avatarElement.style.backgroundImage = `url(${user.avatar})`;
+  }
+  
+  userElement.querySelector('.popup-info__user-preview-name').textContent = user.name || 'Неизвестно';
+  userElement.querySelector('.popup-info__user-preview-about').textContent = user.about || '';
+  
+  return userElement;
+};
+
+const handleInfoClick = (cardId) => {
+  cardInfoModalImage.src = '';
+  cardInfoModalImage.alt = 'Загрузка...';
+  cardInfoModalInfoList.innerHTML = '<p>Загрузка информации...</p>';
+  cardInfoModalUsersList.innerHTML = '';
+  
+  api.getCardList()
+    .then((cards) => {
+      const cardData = cards.find(card => card._id === cardId);
+      
+      if (!cardData) {
+        console.error('Карточка не найдена');
+        cardInfoModalInfoList.innerHTML = '<p>Карточка не найдена</p>';
+        return;
+      }
+      
+      cardInfoModalInfoList.innerHTML = '';
+      cardInfoModalUsersList.innerHTML = '';
+      
+      cardInfoModalImage.src = cardData.link;
+      cardInfoModalImage.alt = cardData.name;
+     
+      cardInfoModalInfoList.append(
+        createInfoString("Название:", cardData.name)
+      );
+      
+      cardInfoModalInfoList.append(
+        createInfoString("Автор:", cardData.owner.name)
+      );
+      
+      cardInfoModalInfoList.append(
+        createInfoString("Описание автора:", cardData.owner.about || "Нет описания")
+      );
+      
+      cardInfoModalInfoList.append(
+        createInfoString("Дата создания:", formatDate(new Date(cardData.createdAt)))
+      );
+      
+      cardInfoModalInfoList.append(
+        createInfoString("Количество лайков:", cardData.likes.length.toString())
+      );
+      
+      if (cardData.likes.length > 0) {
+        cardData.likes.forEach(user => {
+          cardInfoModalUsersList.append(createUserPreview(user));
+        });
+      } else {
+        const noLikesElement = document.createElement('p');
+        noLikesElement.textContent = 'Пока никто не лайкнул эту карточку';
+        noLikesElement.classList.add('popup-info__no-likes');
+        cardInfoModalUsersList.append(noLikesElement);
+      }
+
+      openModalWindow(cardInfoModalWindow);
+    })
+    .catch((err) => {
+      console.error('Ошибка при получении данных карточки:', err);
+      cardInfoModalInfoList.innerHTML = '<p>Ошибка загрузки данных</p>';
+    });
 };
 
 const handleProfileFormSubmit = (evt) => {
@@ -76,7 +167,6 @@ const handleProfileFormSubmit = (evt) => {
     });
 };
 
-// Обработчик отправки формы аватара
 const handleAvatarFromSubmit = (evt) => {
   evt.preventDefault();
   const submitButton = evt.target.querySelector('.popup__button');
@@ -94,7 +184,6 @@ const handleAvatarFromSubmit = (evt) => {
       console.log(err);
     })
     .finally(() => {
-      // Восстанавливаем исходный текст кнопки
       updateButtonText(submitButton, false, originalText, 'Сохранение...');
     });
 };
@@ -104,7 +193,6 @@ const handleCardFormSubmit = (evt) => {
   const submitButton = evt.target.querySelector('.popup__button');
   const originalText = submitButton.textContent;
   
-  // Показываем состояние загрузки
   updateButtonText(submitButton, true, originalText, 'Создание...');
   
   api.addCard({
@@ -119,6 +207,7 @@ const handleCardFormSubmit = (evt) => {
             onPreviewPicture: handlePreviewPicture,
             onLikeIcon: handleLikeClick,
             onDeleteCard: handleDeleteCard,
+            onInfoClick: handleInfoClick,
             currentUserId: currentUserId
           }
         )
@@ -130,7 +219,6 @@ const handleCardFormSubmit = (evt) => {
       console.log(err);
     })
     .finally(() => {
-      // Восстанавливаем исходный текст кнопки
       updateButtonText(submitButton, false, originalText, 'Создание...');
     });
 };
@@ -166,7 +254,7 @@ avatarForm.addEventListener("submit", handleAvatarFromSubmit);
 openProfileFormButton.addEventListener("click", () => {
   profileTitleInput.value = profileTitle.textContent;
   profileDescriptionInput.value = profileDescription.textContent;
-  clearValidation(profileForm, validationSettings); // очистка валидации при открытии формы
+  clearValidation(profileForm, validationSettings);
   openModalWindow(profileFormModalWindow);
 });
 
@@ -182,19 +270,15 @@ openCardFormButton.addEventListener("click", () => {
   openModalWindow(cardFormModalWindow);
 });
 
-// Загрузка начальных данных с сервера
 Promise.all([api.getUserInfo(), api.getCardList()])
   .then(([userData, cards]) => {
-    // Сохраняем ID текущего пользователя
     currentUserId = userData._id;
-    
-    // Устанавливаем данные профиля
+
     profileTitle.textContent = userData.name;
     profileDescription.textContent = userData.about;
     profileAvatar.style.backgroundImage = `url(${userData.avatar})`;
     
-    // Отрисовываем карточки
-    cards.reverse().forEach((cardData) => { // reverse чтобы новые карточки были сверху
+    cards.reverse().forEach((cardData) => {
       placesWrap.append(
         createCardElement(
           cardData,
@@ -202,6 +286,7 @@ Promise.all([api.getUserInfo(), api.getCardList()])
             onPreviewPicture: handlePreviewPicture,
             onLikeIcon: handleLikeClick,
             onDeleteCard: handleDeleteCard,
+            onInfoClick: handleInfoClick,
             currentUserId: currentUserId
           }
         )
@@ -212,13 +297,11 @@ Promise.all([api.getUserInfo(), api.getCardList()])
     console.log(err);
   });
 
-// настраиваем обработчики закрытия попапов
 const allPopups = document.querySelectorAll(".popup");
 allPopups.forEach((popup) => {
   setCloseModalWindowEventListeners(popup);
 });
 
-// Настройки валидации для всех форм
 const validationSettings = {
   formSelector: ".popup__form",
   inputSelector: ".popup__input",
@@ -228,5 +311,4 @@ const validationSettings = {
   errorClass: "popup__error_visible",
 };
 
-// Включение валидации для всех форм
 enableValidation(validationSettings);
