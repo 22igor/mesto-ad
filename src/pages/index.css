@@ -26,7 +26,6 @@
   gap: 20px;
 }
 
-/* Убираем контейнер для картинки */
 .popup-info__image-container {
   display: none;
 }
