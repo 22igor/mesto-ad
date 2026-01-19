@@ -62,8 +62,7 @@ export const enableValidation = (settings) => {
     
     // Проверяем форму сразу при инициализации
     checkForm();
-    
-    // Проверяем форму при каждом вводе в любое поле
+ 
     inputs.forEach(input => {
       input.addEventListener('input', checkForm);
     });
