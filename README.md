@@ -3,3 +3,9 @@
 Для запуска приложения необходимо использовать live-server
 ![изображение live-server](image.png)
 Live-server является расширением VSCode
+
+## Команды для работы с проектом:
+
+- `npm run dev` — запуск сервера разработки
+- `npm run build` — сборка проекта для production
+- `npm run deploy` — публикация проекта на GitHub Pages
