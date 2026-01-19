@@ -25,34 +25,44 @@ export const createCardElement = (
     likeCountElement.textContent = cardData.likes ? cardData.likes.length : 0;
   }
   
+  // Проверяем, лайкнул ли текущий пользователь карточку
   const isLikedByCurrentUser = cardData.likes && cardData.likes.some(user => user._id === currentUserId);
   if (isLikedByCurrentUser) {
     likeButton.classList.add("card__like-button_is-active");
   }
   
+  // Проверяем, является ли текущий пользователь владельцем карточки
   const isOwnCard = cardData.owner && cardData.owner._id === currentUserId;
   if (!isOwnCard && deleteButton) {
     deleteButton.style.display = 'none';
   }
 
+  // Обработчик для кнопки информации (карточка "i")
   if (onInfoClick && infoButton) {
-    infoButton.addEventListener("click", () => {
+    infoButton.addEventListener("click", (evt) => {
+      evt.stopPropagation(); // Предотвращаем всплытие события
       onInfoClick(cardData._id);
     });
   }
 
+  // Обработчик для лайка
   if (onLikeIcon) {
-    likeButton.addEventListener("click", () => {
-      onLikeIcon(likeButton, cardData._id, isLikedByCurrentUser, likeCountElement);
+    likeButton.addEventListener("click", (evt) => {
+      evt.stopPropagation(); // Предотвращаем всплытие события
+      const isLiked = likeButton.classList.contains("card__like-button_is-active");
+      onLikeIcon(likeButton, cardData._id, isLiked, likeCountElement);
     });
   }
 
+  // Обработчик для удаления карточки
   if (onDeleteCard && deleteButton) {
-    deleteButton.addEventListener("click", () => {
+    deleteButton.addEventListener("click", (evt) => {
+      evt.stopPropagation(); // Предотвращаем всплытие события
       onDeleteCard(cardElement, cardData._id);
     });
   }
 
+  // Обработчик для открытия изображения в полном размере
   if (onPreviewPicture) {
     cardImage.addEventListener("click", () => {
       onPreviewPicture({

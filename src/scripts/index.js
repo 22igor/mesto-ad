@@ -31,11 +31,15 @@ const avatarForm = avatarFormModalWindow.querySelector(".popup__form");
 const avatarInput = avatarForm.querySelector(".popup__input");
 
 const cardInfoModalWindow = document.querySelector('.popup_type_info');
-const cardInfoModalImage = cardInfoModalWindow.querySelector('.popup-info__image');
 const cardInfoModalInfoList = cardInfoModalWindow.querySelector('.popup-info__list');
 const cardInfoModalUsersList = cardInfoModalWindow.querySelector('.popup-info__users-list');
 
+const removeCardModalWindow = document.querySelector('.popup_type_remove-card');
+const removeCardForm = removeCardModalWindow.querySelector('.popup__form');
+
 let currentUserId = null;
+let cardToDelete = { element: null, id: null };
+let cachedCards = null;
 
 const updateButtonText = (button, isLoading, defaultText, loadingText) => {
   button.textContent = isLoading ? loadingText : defaultText;
@@ -68,78 +72,74 @@ const createInfoString = (term, definition) => {
 };
 
 const createUserPreview = (user) => {
-  const userTemplate = document.querySelector('#popup-info-user-preview-template').content;
-  const userElement = userTemplate.querySelector('.popup-info__user-preview').cloneNode(true);
+  const userElement = document.createElement('div');
+  userElement.classList.add('popup-info__user-preview');
   
-  const avatarElement = userElement.querySelector('.popup-info__user-preview-avatar');
-  if (user.avatar) {
-    avatarElement.style.backgroundImage = `url(${user.avatar})`;
-  }
+  const nameElement = document.createElement('span');
+  nameElement.classList.add('popup-info__user-preview-name');
+  nameElement.textContent = user.name || 'Неизвестно';
   
-  userElement.querySelector('.popup-info__user-preview-name').textContent = user.name || 'Неизвестно';
-  userElement.querySelector('.popup-info__user-preview-about').textContent = user.about || '';
+  userElement.appendChild(nameElement);
   
   return userElement;
 };
 
 const handleInfoClick = (cardId) => {
-  cardInfoModalImage.src = '';
-  cardInfoModalImage.alt = 'Загрузка...';
-  cardInfoModalInfoList.innerHTML = '<p>Загрузка информации...</p>';
+  cardInfoModalInfoList.innerHTML = '<p class="popup-info__loading">Загрузка информации...</p>';
   cardInfoModalUsersList.innerHTML = '';
   
-  api.getCardList()
+  openModalWindow(cardInfoModalWindow);
+  
+  const getCardData = () => {
+    if (cachedCards) {
+      return Promise.resolve(cachedCards);
+    } else {
+      return api.getCardList()
+        .then(cards => {
+          cachedCards = cards;
+          return cards;
+        });
+    }
+  };
+  
+  getCardData()
     .then((cards) => {
       const cardData = cards.find(card => card._id === cardId);
       
       if (!cardData) {
-        console.error('Карточка не найдена');
-        cardInfoModalInfoList.innerHTML = '<p>Карточка не найдена</p>';
-        return;
+        throw new Error('Карточка не найдена');
       }
       
       cardInfoModalInfoList.innerHTML = '';
       cardInfoModalUsersList.innerHTML = '';
       
-      cardInfoModalImage.src = cardData.link;
-      cardInfoModalImage.alt = cardData.name;
-     
-      cardInfoModalInfoList.append(
-        createInfoString("Название:", cardData.name)
-      );
+      // Создаем элементы информации о карточке (без описания автора)
+      const infoElements = [
+        { term: "Описание:", definition: cardData.name },
+        { term: "Дата создания:", definition: formatDate(new Date(cardData.createdAt)) },
+        { term: "Владелец:", definition: cardData.owner.name },
+        { term: "Количество лайков:", definition: cardData.likes.length.toString() }
+      ];
       
-      cardInfoModalInfoList.append(
-        createInfoString("Автор:", cardData.owner.name)
-      );
+      infoElements.forEach(info => {
+        cardInfoModalInfoList.appendChild(createInfoString(info.term, info.definition));
+      });
       
-      cardInfoModalInfoList.append(
-        createInfoString("Описание автора:", cardData.owner.about || "Нет описания")
-      );
-      
-      cardInfoModalInfoList.append(
-        createInfoString("Дата создания:", formatDate(new Date(cardData.createdAt)))
-      );
-      
-      cardInfoModalInfoList.append(
-        createInfoString("Количество лайков:", cardData.likes.length.toString())
-      );
-      
+      // Список пользователей, лайкнувших карточку
       if (cardData.likes.length > 0) {
         cardData.likes.forEach(user => {
-          cardInfoModalUsersList.append(createUserPreview(user));
+          cardInfoModalUsersList.appendChild(createUserPreview(user));
         });
       } else {
         const noLikesElement = document.createElement('p');
         noLikesElement.textContent = 'Пока никто не лайкнул эту карточку';
         noLikesElement.classList.add('popup-info__no-likes');
-        cardInfoModalUsersList.append(noLikesElement);
+        cardInfoModalUsersList.appendChild(noLikesElement);
       }
-
-      openModalWindow(cardInfoModalWindow);
     })
     .catch((err) => {
       console.error('Ошибка при получении данных карточки:', err);
-      cardInfoModalInfoList.innerHTML = '<p>Ошибка загрузки данных</p>';
+      cardInfoModalInfoList.innerHTML = '<p class="popup-info__error">Ошибка загрузки данных.</p>';
     });
 };
 
@@ -200,13 +200,17 @@ const handleCardFormSubmit = (evt) => {
     link: cardLinkInput.value,
   })
     .then((cardData) => {
+      if (cachedCards) {
+        cachedCards.unshift(cardData);
+      }
+      
       placesWrap.prepend(
         createCardElement(
           cardData,
           {
             onPreviewPicture: handlePreviewPicture,
             onLikeIcon: handleLikeClick,
-            onDeleteCard: handleDeleteCard,
+            onDeleteCard: handleDeleteCardClick,
             onInfoClick: handleInfoClick,
             currentUserId: currentUserId
           }
@@ -231,25 +235,54 @@ const handleLikeClick = (likeButton, cardId, isLiked, likeCountElement) => {
       if (likeCountElement) {
         likeCountElement.textContent = updatedCard.likes.length;
       }
+      
+      if (cachedCards) {
+        const cardIndex = cachedCards.findIndex(card => card._id === cardId);
+        if (cardIndex !== -1) {
+          cachedCards[cardIndex] = updatedCard;
+        }
+      }
     })
     .catch((err) => {
       console.log(err);
     });
 };
 
-const handleDeleteCard = (cardElement, cardId) => {
-  api.deleteCardApi(cardId)
+const handleDeleteCardClick = (cardElement, cardId) => {
+  cardToDelete = { element: cardElement, id: cardId };
+  openModalWindow(removeCardModalWindow);
+};
+
+const handleRemoveCardConfirm = (evt) => {
+  evt.preventDefault();
+  const submitButton = evt.target.querySelector('.popup__button');
+  const originalText = submitButton.textContent;
+
+  updateButtonText(submitButton, true, originalText, 'Удаление...');
+  
+  api.deleteCardApi(cardToDelete.id)
     .then(() => {
-      cardElement.remove();
+      cardToDelete.element.remove();
+      closeModalWindow(removeCardModalWindow);
+      
+      if (cachedCards) {
+        cachedCards = cachedCards.filter(card => card._id !== cardToDelete.id);
+      }
+      
+      cardToDelete = { element: null, id: null };
     })
     .catch((err) => {
       console.log(err);
+    })
+    .finally(() => {
+      updateButtonText(submitButton, false, originalText, 'Удаление...');
     });
 };
 
 profileForm.addEventListener("submit", handleProfileFormSubmit);
 cardForm.addEventListener("submit", handleCardFormSubmit);
 avatarForm.addEventListener("submit", handleAvatarFromSubmit);
+removeCardForm.addEventListener("submit", handleRemoveCardConfirm);
 
 openProfileFormButton.addEventListener("click", () => {
   profileTitleInput.value = profileTitle.textContent;
@@ -273,6 +306,7 @@ openCardFormButton.addEventListener("click", () => {
 Promise.all([api.getUserInfo(), api.getCardList()])
   .then(([userData, cards]) => {
     currentUserId = userData._id;
+    cachedCards = cards;
 
     profileTitle.textContent = userData.name;
     profileDescription.textContent = userData.about;
@@ -285,7 +319,7 @@ Promise.all([api.getUserInfo(), api.getCardList()])
           {
             onPreviewPicture: handlePreviewPicture,
             onLikeIcon: handleLikeClick,
-            onDeleteCard: handleDeleteCard,
+            onDeleteCard: handleDeleteCardClick,
             onInfoClick: handleInfoClick,
             currentUserId: currentUserId
           }

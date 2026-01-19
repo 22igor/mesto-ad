@@ -14,8 +14,10 @@ export const clearValidation = (form, settings) => {
   });
   
   // Делаем кнопку неактивной
-  button.classList.add(settings.inactiveButtonClass);
-  button.disabled = true;
+  if (button) {
+    button.classList.add(settings.inactiveButtonClass);
+    button.disabled = true;
+  }
 };
 
 // Включает валидацию для всех форм на странице
@@ -52,8 +54,10 @@ export const enableValidation = (settings) => {
       });
       
       // Включаем/выключаем кнопку в зависимости от наличия ошибок
-      button.classList.toggle(settings.inactiveButtonClass, hasError);
-      button.disabled = hasError;
+      if (button) {
+        button.classList.toggle(settings.inactiveButtonClass, hasError);
+        button.disabled = hasError;
+      }
     };
     
     // Проверяем форму сразу при инициализации
